@@ -1,4 +1,4 @@
-use serde::{Serialize, Deserialize}
+use serde::{Deserialize, Serialize};
 
 #[derive(Debug, Serialize, Deserialize, Clone)]
 pub struct Event {
@@ -6,6 +6,6 @@ pub struct Event {
     pub timestamp: u64,
     pub customer_id: u64,
     pub terminal_id: u64,
-    pub amount: i64,
-    pub fraud: u2,
+    pub amount: f64,
+    pub fraud: u8,
 }
