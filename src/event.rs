@@ -9,3 +9,9 @@ pub struct Event {
     pub amount: f64,
     pub fraud: u8,
 }
+
+#[derive(Debug, Serialize, Deserialize, Clone)]
+pub struct ScoredEvent {
+    pub event: Event,
+    pub score: f64,
+}

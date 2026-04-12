@@ -1,10 +1,17 @@
+mod channel;
 mod event;
+mod rules;
+mod state;
 
+use crate::channel::{EventQueue, ScoredEventQueue};
 use crate::event::Event;
+use crate::rules::score_event;
+use crate::state::UserState;
+
 use serde_json;
+use std::collections::HashMap;
 use tokio::io::{AsyncBufReadExt, BufReader};
 use tokio::net::TcpListener;
-use tokio_stream::{StreamExt, wrappers::TcpListenerStream};
 
 #[tokio::main]
 async fn main() {
@@ -14,6 +21,9 @@ async fn main() {
     loop {
         let (socket, _) = listener.accept().await.unwrap();
 
+        let (eq, mut eq_recv) = EventQueue::new(1000);
+        let (seq, mut seq_recv) = ScoredEventQueue::new(1000);
+
         tokio::spawn(async move {
             let reader = BufReader::new(socket);
             let mut lines = reader.lines();
@@ -22,6 +32,19 @@ async fn main() {
                 println!("Got: {}", line);
                 let c: Event = serde_json::from_str(&line).unwrap();
                 println!("Got: {:?}", c);
+                eq.push(c).await;
+            }
+        });
+
+        tokio::spawn(async move {
+            let mut state: HashMap<u64, UserState> = HashMap::new();
+            while let Some(event) = eq_recv.recv().await {
+                println!("Got: {:?}", event);
+                let user_state = state.entry(event.customer_id.clone()).or_default();
+                user_state.add(&event);
+                let (scored_val, flags) = score_event(&event, &user_state);
+                println!("I got a score of: {}", scored_val);
+                println!("My flags were: {:?}", flags);
             }
         });
     }
