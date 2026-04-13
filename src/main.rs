@@ -18,6 +18,7 @@ use tokio::sync::Mutex;
 #[tokio::main]
 async fn main() {
     let listener = TcpListener::bind("127.0.0.1:8080").await.unwrap();
+    // Holds the user states so that multiple inputs reference correct state
     let state: Arc<Mutex<HashMap<u64, UserState>>> = Arc::new(Mutex::new(HashMap::new()));
     println!("Listener started on 127.0.0.1:8080!");
 
@@ -28,39 +29,39 @@ async fn main() {
         let (eq, mut eq_recv) = EventQueue::new(1000);
         let (seq, mut seq_recv) = ScoredEventQueue::new(1000);
 
+        // Process that receives input events
         tokio::spawn(async move {
             let reader = BufReader::new(socket);
             let mut lines = reader.lines();
 
             while let Ok(Some(line)) = lines.next_line().await {
-                println!("Got: {}", line);
                 let c: Event = serde_json::from_str(&line).unwrap();
-                println!("Got: {:?}", c);
                 eq.push(c).await;
             }
         });
 
+        // Process that scores events
         tokio::spawn(async move {
             while let Some(event) = eq_recv.recv().await {
-                let mut state = state.lock().await;
-                println!("Got: {:?}", event);
-                let user_state = state.entry(event.customer_id).or_default();
+                let scored_event = {
+                    let mut state = state.lock().await;
+                    let user_state = state.entry(event.customer_id).or_default();
 
-                let (scored_val, flags) = score_event(&event, &user_state);
-                println!("I got a score of: {}", scored_val);
-                println!("My flags were: {:?}", flags);
+                    let (scored_val, flags) = score_event(&event, &user_state);
 
-                user_state.add(&event);
+                    user_state.add(&event);
 
-                let scored_event = ScoredEvent {
-                    event: event.clone(),
-                    score: scored_val,
-                    flags: flags,
+                    ScoredEvent {
+                        event: event.clone(),
+                        score: scored_val,
+                        flags: flags,
+                    }
                 };
                 seq.push(scored_event).await;
             }
         });
 
+        // Process that outputs the final values
         tokio::spawn(async move {
             while let Some(scored) = seq_recv.recv().await {
                 println!(

@@ -2,6 +2,7 @@ use crate::event::Event;
 use crate::event::ScoredEvent;
 use tokio::sync::mpsc;
 
+// Individual queue for Event structs
 pub struct EventQueue {
     sender: mpsc::Sender<Event>,
 }
@@ -18,6 +19,7 @@ impl EventQueue {
     }
 }
 
+// Individual queue for ScoredEvent structs
 pub struct ScoredEventQueue {
     sender: mpsc::Sender<ScoredEvent>,
 }
