@@ -14,4 +14,5 @@ pub struct Event {
 pub struct ScoredEvent {
     pub event: Event,
     pub score: f64,
+    pub flags: Vec<String>,
 }

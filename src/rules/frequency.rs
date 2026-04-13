@@ -13,7 +13,7 @@ impl Rule for FrequencyRule {
         let count = state
             .recents
             .iter()
-            .filter(|e| event.timestamp - e.timestamp <= self.window_size)
+            .filter(|e| event.timestamp.saturating_sub(e.timestamp) <= self.window_size)
             .count();
 
         let triggered = count as u64 > self.max_count;
